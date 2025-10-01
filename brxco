@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema de Envíos Interactivo</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 0; padding: 0; text-align: center; }
+    header { background: #2c3e50; color: white; padding: 20px; }
+    .container { width: 90%; max-width: 700px; margin: 30px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .progress { height: 12px; background: #ddd; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+    .progress-bar { height: 12px; background: #3498db; width: 0%; transition: width 0.3s; }
+    .step { display: none; }
+    .step.active { display: block; }
+    #step0 h2 { margin-bottom: 30px; }
+    #step0 button { display: block; width: 80%; margin: 20px auto; padding: 20px; font-size: 20px; }
+    label { display: block; margin: 10px 0 5px; text-align: left; }
+    input, select, textarea { width: 95%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; font-family: Arial, sans-serif; }
+    button { margin: 8px; padding: 10px 20px; border: none; border-radius: 6px; background: #3498db; color: white; font-size: 15px; cursor: pointer; }
+    button.alerta { background: #e74c3c; }
+    button.regresar { background: #7f8c8d; }
+    button:hover { opacity: 0.9; }
+    .alertaMsg { color: #e74c3c; font-weight: bold; margin: 15px 0; }
+    footer { margin-top: 30px; padding: 15px; background: #2c3e50; color: white; font-size: 14px; }
+    .input-error { border-color: #e74c3c; }
+    .error-message { color: #e74c3c; font-size: 12px; margin-top: -12px; margin-bottom: 10px; text-align: left; display: none; }
+    .campo-internacional { display: none; }
+    .calculo-costo { background-color: #f0f8ff; border: 1px solid #b0d4f1; border-radius: 8px; padding: 15px; margin-top: 20px; }
+    .calculo-costo h4 { margin-top: 0; color: #2c3e50; }
+    .calculo-costo div { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .calculo-costo .total { font-weight: bold; color: #3498db; border-top: 1px solid #ccc; padding-top: 8px; font-size: 16px; }
+    .etiqueta-contenedor { border: 2px solid #333; padding: 10px; font-size: 10px; text-align: left; }
+    .etiqueta-estado { text-align: center; font-size: 14px; font-weight: bold; color: #3498db; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+    .etiqueta-grid { display: grid; grid-template-columns: 1fr 3fr; grid-template-rows: auto auto auto auto; gap: 5px; grid-template-areas: "qr-grande header" "qr-grande datos-envio" "valor-cobrar datos-envio" "valor-cobrar logistica"; }
+    .grid-qr-grande { grid-area: qr-grande; align-self: center; }
+    .grid-header { grid-area: header; display: flex; justify-content: space-between; align-items: flex-start; }
+    .grid-datos-envio { grid-area: datos-envio; display: flex; }
+    .grid-valor-cobrar { grid-area: valor-cobrar; align-self: flex-end; padding-bottom: 10px; }
+    .grid-logistica { grid-area: logistica; }
+    .etiqueta-titulo { font-weight: bold; font-size: 12px; }
+    .ruta-info { display: flex; border: 1px solid #333; }
+    .ruta-item { padding: 2px 10px; text-align: center; }
+    .ruta-item span { display: block; }
+    .ruta-item .valor { font-weight: bold; font-size: 16px; padding-top: 4px; }
+    .ruta-item + .ruta-item { border-left: 1px solid #333; }
+    .datos-principales { flex: 2; padding-right: 10px; }
+    .datos-principales div { margin-bottom: 8px; }
+    .barcode-principal { flex: 1; text-align: center; }
+    .barcode-principal svg { width: 100%; height: 50px; }
+    .valor-a-cobrar { font-weight: bold; }
+    .valor-a-cobrar span { font-size: 18px; }
+    .tabla-logistica table { width: 100%; border-collapse: collapse; border: 1px solid #333; }
+    .tabla-logistica th, .tabla-logistica td { border: 1px solid #333; text-align: center; padding: 4px; font-size: 9px; }
+    .tabla-logistica td { height: 25px; }
+    b { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📦 Sistema de Envíos</h1>
+    <p>Flujo interactivo con datos del paquete</p>
+  </header>
+  <div class="container">
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="step active" id="step0">
+      <h2>Selecciona el Tipo de Envío</h2>
+      <button onclick="iniciarEnvio('Nacional')">🚚 Envío Nacional</button>
+      <button onclick="iniciarEnvio('Internacional')">✈️ Envío Internacional</button>
+    </div>
+    <div class="step" id="step1">
+      <h2>1. Datos del Remitente</h2>
+      <form id="formRemitente"></form>
+      <button class="regresar" onclick="goBack()">Regresar</button>
+      <button onclick="validarPaso(1)">Continuar</button>
+      <button class="alerta" onclick="restart()">Cancelar Envío</button>
+    </div>
+    <div class="step" id="step2">
+      <h2>2. Datos del Destinatario</h2>
+      <form id="formDestinatario"></form>
+      <button class="regresar" onclick="goBack()">Regresar</button>
+      <button onclick="validarPaso(2)">Continuar</button>
+      <button class="alerta" onclick="restart()">Cancelar Envío</button>
+    </div>
+    <div class="step" id="step3">
+      <h2>3. Información del Paquete</h2>
+      <form id="formPaquete"></form>
+      <div class="calculo-costo"></div>
+      <button class="regresar" onclick="goBack()">Regresar</button>
+      <button onclick="validarPaso(3)">Generar Resumen</button>
+      <button class="alerta" onclick="restart()">Cancelar Envío</button>
+    </div>
+    <div class="step" id="step4"><h2>4. Confirmación</h2><div class="resumen" id="resumenDatos"></div><button class="regresar" onclick="goBack()">Corregir ✏️</button><button onclick="nextStep()">Confirmar ✅</button><button class="alerta" onclick="restart()">Cancelar Envío</button></div>
+    <div class="step" id="step5"><h2>5. Envío del paquete</h2><p>El paquete ha sido despachado hacia el destino.</p><button onclick="nextStep()">Continuar</button></div>
+    <div class="step" id="step6"><h2>6. Seguimiento</h2><p>Estado: 🚚 En camino hacia ti.</p><div class="alertaMsg" id="alertaTransporte" style="display:none;"></div><button onclick="nextStep()">Continuar</button><button class="alerta" onclick="simularDesvio()">Simular desvío ⚠️</button></div>
+    <div class="step" id="step7"><h2>7. Entrega</h2><p id="mensajeEntrega"></p><div class="alertaMsg" id="alertaEntrega" style="display:none;"></div><button onclick="nextStep()">Generar Factura 🧾</button><button class="alerta" onclick="simularEntregaFallida()">Simular fallo ❌</button></div>
+    <div class="step" id="step8"><h2>8. Factura Digital</h2><div id="facturaDigital"></div><button onclick="restart()">Nuevo Envío</button></div>
+  </div>
+  <footer><p>Proyecto académico - Sistema de Envíos</p></footer>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <script>
+    document.getElementById('formRemitente').innerHTML = `<label>Nombre:</label><input type="text" id="remitente" onblur="validarCampo(this)" required><div id="remitenteError" class="error-message"></div><label>Teléfono:</label><input type="text" id="telRemitente" onblur="validarCampo(this)" required minlength="7"><div id="telRemitenteError" class="error-message"></div><label>Dirección:</label><input type="text" id="dirRemitente" onblur="validarCampo(this)" required><div id="dirRemitenteError" class="error-message"></div><label>Cód. Postal:</label><input type="text" id="codPostalRem" onblur="validarCampo(this)"><div id="codPostalRemError" class="error-message"></div><label>Ciudad:</label><input type="text" id="ciudadRem" onblur="validarCampo(this)" required><div id="ciudadRemError" class="error-message"></div><label>Municipio/Dpto:</label><input type="text" id="municipioRem" onblur="validarCampo(this)" required><div id="municipioRemError" class="error-message"></div>`;
+    document.getElementById('formDestinatario').innerHTML = `<label>Nombre:</label><input type="text" id="destinatario" onblur="validarCampo(this)" required><div id="destinatarioError" class="error-message"></div><label>Teléfono:</label><input type="text" id="telDestinatario" onblur="validarCampo(this)" required minlength="7"><div id="telDestinatarioError" class="error-message"></div><label>Dirección:</label><input type="text" id="dirDestinatario" onblur="validarCampo(this)" required><div id="dirDestinatarioError" class="error-message"></div><div class="campo-internacional"><label>País:</label><input type="text" id="paisDestino" onblur="validarCampo(this)"><div id="paisDestinoError" class="error-message"></div></div><label>Cód. Postal:</label><input type="text" id="codPostalDest" onblur="validarCampo(this)"><div id="codPostalDestError" class="error-message"></div><label>Ciudad / Estado:</label><input type="text" id="ciudadDest" onblur="validarCampo(this)" required><div id="ciudadDestError" class="error-message"></div><label>Municipio/Provincia:</label><input type="text" id="municipioDest" onblur="validarCampo(this)" required><div id="municipioDestError" class="error-message"></div>`;
+    document.getElementById('formPaquete').innerHTML = `<label>Peso (kg):</label><input type="number" id="peso" min="0.1" step="0.1" oninput="calcularCostoEstimado()" onblur="validarCampo(this)" required><div id="pesoError" class="error-message"></div><div class="campo-nacional"><label>Valor Declarado (COP) - Opcional:</label><input type="number" id="valorDeclarado" min="0" step="1000" oninput="calcularCostoEstimado()" onblur="validarCampo(this)"><div id="valorDeclaradoError" class="error-message"></div></div><div class="campo-internacional"><label>Valor Declarado (USD):</label><input type="number" id="valorUSD" min="1" step="1" oninput="calcularCostoEstimado()" onblur="validarCampo(this)"><div id="valorUSDError" class="error-message"></div></div><div class="campo-internacional"><label>Descripción para Aduanas:</label><textarea id="infoAduanas" rows="3" onblur="validarCampo(this)"></textarea><div id="infoAduanasError" class="error-message"></div></div><label>Tipo de Contenido:</label><select id="tipoContenido" onchange="gestionarOtroContenido()" onblur="validarCampo(this)" required><option value="" disabled selected>Selecciona una opción</option><option value="Ropa">Ropa</option><option value="Electrónica">Electrónica</option><option value="Documentos">Documentos</option><option value="Libros">Libros</option><option value="Cosméticos">Cosméticos</option><option value="Juguetes">Juguetes</option><option value="Otros">Otros</option></select><input type="text" id="contenidoOtro" placeholder="Especifica el contenido" style="display:none; margin-top: -10px;"><div id="tipoContenidoError" class="error-message"></div><label>¿Es frágil?</label><select id="fragil"><option value="Sí">Sí</option><option value="No" selected>No</option></select><label>Observaciones:</label><input type="text" id="obs" placeholder="(Opcional)">`;
+    document.querySelector('.calculo-costo').innerHTML = `<h4>Costo Estimado del Envío</h4><div><span>Costo Base:</span><span id="costo-base">$ 0</span></div><div><span>Costo extra por peso:</span><span id="costo-peso">$ 0</span></div><div><span>Seguro (1.5%):</span><span id="costo-seguro">$ 0</span></div><div class="total"><span>COSTO TOTAL:</span><span id="costo-total">$ 0</span></div>`;
+    let currentStep = 0;
+    const totalSteps = 8;
+    let datos = {};
+    const rutasConfig = { "RIOHACHA-LA GUAJIRA": { "BARRANQUILLA-ATLÁNTICO": { ruta: "MDE BOG BQA", casilla: "9", puerta: "2-1" } }, "MEDELLIN-ANTIOQUIA": { "RIOHACHA-LA GUAJIRA": { ruta: "MDE BOG BQA", casilla: "12", puerta: "3-2" } } };
+    const TASA_CAMBIO_USD_COP = 4100;
+    const formatCurrency = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+    function goBack() { if (currentStep <= 0) return; document.getElementById("step" + currentStep).classList.remove("active"); currentStep--; document.getElementById("step" + currentStep).classList.add("active"); updateProgress(); }
+    function iniciarEnvio(tipo) { datos.tipoEnvio = tipo; gestionarCamposInternacionales(); currentStep = 1; document.getElementById('step0').classList.remove('active'); document.getElementById('step1').classList.add('active'); updateProgress(); }
+    function nextStep() { if (currentStep >= totalSteps) return; if (currentStep === 4) datos.estadoEnvio = 'En Bodega Origen 🏢'; if (currentStep === 5) datos.estadoEnvio = 'En Tránsito 🚚'; if (currentStep === 6) datos.estadoEnvio = 'En Bodega Destino 🏬'; if (currentStep === 7) datos.estadoEnvio = 'Entregado ✅'; document.getElementById("step" + currentStep).classList.remove("active"); currentStep++; document.getElementById("step" + currentStep).classList.add("active"); updateProgress(); if (currentStep === 7) { document.getElementById("mensajeEntrega").innerHTML = `✅ El paquete fue entregado exitosamente.`; document.getElementById("alertaEntrega").style.display = "none"; } if (currentStep === 8) generarFactura(); }
+    function restart() { document.getElementById("step" + currentStep).classList.remove("active"); currentStep = 0; document.getElementById("step0").classList.add("active"); document.getElementById("progressBar").style.width = "0%"; document.getElementById("formRemitente").reset(); document.getElementById("formDestinatario").reset(); document.getElementById("formPaquete").reset(); document.querySelectorAll('.input-error').forEach(e => e.classList.remove('input-error')); document.querySelectorAll('.error-message').forEach(e => e.style.display = 'none'); datos = {}; document.getElementById("alertaTransporte").style.display = "none"; document.getElementById("alertaEntrega").style.display = "none"; gestionarCamposInternacionales(); calcularCostoEstimado(); }
+    function obtenerMetodoEnvioAleatorio(tipoEnvio) { if (tipoEnvio === 'Internacional') return 'Aéreo ✈️'; const metodos = ['Aéreo ✈️', 'Marítimo 🚢', 'Terrestre 🚚']; return metodos[Math.floor(Math.random() * metodos.length)]; }
+    function gestionarCamposInternacionales() { const tipoEnvio = datos.tipoEnvio || 'Nacional'; const camposNacionales = document.querySelectorAll('.campo-nacional'); const camposInternacionales = document.querySelectorAll('.campo-internacional'); if (tipoEnvio === 'Internacional') { camposNacionales.forEach(c => c.style.display = 'none'); camposInternacionales.forEach(c => c.style.display = 'block'); camposInternacionales.forEach(c => c.querySelectorAll('input, textarea').forEach(i => i.required = true)); camposNacionales.forEach(c => c.querySelectorAll('input').forEach(i => i.required = false)); } else { camposNacionales.forEach(c => c.style.display = 'block'); camposInternacionales.forEach(c => c.style.display = 'none'); camposNacionales.forEach(c => c.querySelectorAll('input').forEach(i => i.required = false)); camposInternacionales.forEach(c => c.querySelectorAll('input, textarea').forEach(i => i.required = false)); } calcularCostoEstimado(); }
+    function updateProgress() { const percent = currentStep > 0 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0; document.getElementById("progressBar").style.width = percent + "%"; }
+    function calcularCostoEstimado() { const tipoEnvio = datos.tipoEnvio || 'Nacional'; const peso = parseFloat(document.getElementById('peso').value) || 0; let costoBase = 0, costoPorKgAdicional = 0, valorDeclaradoEnCOP = 0; if (tipoEnvio === 'Internacional') { costoBase = 40000; costoPorKgAdicional = 15000; valorDeclaradoEnCOP = (parseFloat(document.getElementById('valorUSD').value) || 0) * TASA_CAMBIO_USD_COP; } else if (tipoEnvio === 'Nacional') { costoBase = 8000; costoPorKgAdicional = 4000; valorDeclaradoEnCOP = parseFloat(document.getElementById('valorDeclarado').value) || 0; } const costoPorPeso = peso > 1 ? (peso - 1) * costoPorKgAdicional : 0; const costoSeguro = valorDeclaradoEnCOP * 0.015; const costoTotal = costoBase + costoPorPeso + costoSeguro; document.getElementById('costo-base').textContent = formatCurrency(costoBase); document.getElementById('costo-peso').textContent = formatCurrency(costoPorPeso); document.getElementById('costo-seguro').textContent = formatCurrency(costoSeguro); document.getElementById('costo-total').textContent = formatCurrency(costoTotal); }
+    function gestionarOtroContenido() { const otro = document.getElementById('contenidoOtro'); otro.style.display = (document.getElementById('tipoContenido').value === 'Otros') ? 'block' : 'none'; if (document.getElementById('tipoContenido').value !== 'Otros') otro.value = ''; }
+    function validarCampo(input) { const errorDiv = document.getElementById(input.id + 'Error'); let esValido = true; let mensajeError = ''; const valor = input.value; const soloNumerosRegex = /^[0-9]+$/; const soloLetrasRegex = /^[a-zA-Z\sñÑáéíóúÁÉÍÓÚ]+$/; const contieneLetraRegex = /[a-zA-Z]/; const contieneNumeroRegex = /[0-9]/; const caracteresInvalidosDirRegex = /[^a-zA-Z0-9\s#\-.\/ñÑáéíóúÁÉÍÓÚ]/; if (input.required && valor.trim() === '') { esValido = false; mensajeError = 'Este campo es obligatorio.'; } else if (valor.trim() !== '') { switch (input.id) { case 'remitente': case 'ciudadRem': case 'municipioRem': case 'destinatario': case 'ciudadDest': case 'municipioDest': case 'paisDestino': if (!soloLetrasRegex.test(valor)) { esValido = false; mensajeError = 'Solo debe contener letras y espacios.'; } break; case 'telRemitente': case 'telDestinatario': case 'codPostalRem': case 'codPostalDest': case 'valorUSD': if (!soloNumerosRegex.test(valor)) { esValido = false; mensajeError = 'Solo debe contener números.'; } else if (input.minLength > 0 && valor.length < input.minLength) { esValido = false; mensajeError = `Debe tener al menos ${input.minLength} caracteres.`; } break; case 'dirRemitente': case 'dirDestinatario': if (valor.length < 5) { esValido = false; mensajeError = 'La dirección es demasiado corta.'; } else if (!contieneLetraRegex.test(valor) || !contieneNumeroRegex.test(valor)) { esValido = false; mensajeError = 'Debe incluir letras y números.'; } else if (caracteresInvalidosDirRegex.test(valor)) { esValido = false; mensajeError = 'Contiene caracteres no permitidos.'; } break; case 'valorDeclarado': if (valor !== '' && !soloNumerosRegex.test(valor)) { esValido = false; mensajeError = 'Si lo ingresas, debe ser un número.';} break; } } if (!esValido) { input.classList.add('input-error'); if(errorDiv) { errorDiv.textContent = mensajeError; errorDiv.style.display = 'block'; } } else { input.classList.remove('input-error'); if(errorDiv) errorDiv.style.display = 'none'; } return esValido; }
+    function validarPaso(paso) { let esPasoValido = true; let formId = `#form${paso === 1 ? 'Remitente' : (paso === 2 ? 'Destinatario' : 'Paquete')}`; document.querySelectorAll(`${formId} [onblur], ${formId} [required]`).forEach(c => { if(!validarCampo(c)) esPasoValido = false; }); if (!esPasoValido) return; if (paso === 1) { Object.assign(datos, { remitente: document.getElementById("remitente").value, telRem: document.getElementById("telRemitente").value, dirRem: document.getElementById("dirRemitente").value, codPostalRem: document.getElementById("codPostalRem").value, ciudadRem: document.getElementById("ciudadRem").value, municipioRem: document.getElementById("municipioRem").value }); nextStep(); } else if (paso === 2) { Object.assign(datos, { destinatario: document.getElementById("destinatario").value, telDest: document.getElementById("telDestinatario").value, dirDest: document.getElementById("dirDestinatario").value, paisDestino: document.getElementById("paisDestino").value, codPostalDest: document.getElementById("codPostalDest").value, ciudadDest: document.getElementById("ciudadDest").value, municipioDest: document.getElementById("municipioDest").value }); nextStep(); calcularCostoEstimado(); } else if (paso === 3) { let cont = document.getElementById('tipoContenido').value; if (cont === 'Otros') cont = document.getElementById('contenidoOtro').value; Object.assign(datos, { peso: document.getElementById("peso").value, valorDeclarado: document.getElementById("valorDeclarado").value || "0", valorUSD: document.getElementById("valorUSD").value, infoAduanas: document.getElementById("infoAduanas").value, contenido: cont, fragil: document.getElementById("fragil").value, obs: document.getElementById("obs").value, metodoEnvio: obtenerMetodoEnvioAleatorio(datos.tipoEnvio), costoTotal: document.getElementById('costo-total').textContent }); let inter = datos.tipoEnvio === 'Internacional' ? `<hr><b>País Destino:</b> ${datos.paisDestino}<br><b>Valor USD:</b> $${datos.valorUSD} USD<br>` : ''; document.getElementById("resumenDatos").innerHTML = `<b>Tipo de Envío:</b> ${datos.tipoEnvio}<br><b>Remitente:</b> ${datos.remitente}, ${datos.ciudadRem}/${datos.municipioRem}<br><b>Destinatario:</b> ${datos.destinatario}, ${datos.ciudadDest}/${datos.municipioDest}<br>${inter}<hr><b>Contenido:</b> ${datos.contenido} (${datos.peso} kg)<br><b>Valor Declarado:</b> ${formatCurrency(datos.valorDeclarado)}<br><b>Método de Envío:</b> ${datos.metodoEnvio}<br><b>Costo del Envío:</b> ${datos.costoTotal}`; nextStep(); } }
+    function simularDesvio() { document.getElementById("alertaTransporte").style.display = "block"; document.getElementById("alertaTransporte").innerText = "⚠️ Vehículo desviado, reprogramando ruta..."; datos.estadoEnvio = "En Tránsito con Retraso ⚠️"; }
+    function simularEntregaFallida() { document.getElementById("alertaEntrega").style.display = "block"; document.getElementById("alertaEntrega").innerText = "❌ Entrega fallida, será reprogramada."; datos.estadoEnvio = "Entrega Fallida ❌"; }
+    function calcularRuta() { if (datos.tipoEnvio === 'Internacional') return { ruta: "INTERNACIONAL", casilla: "N/A", puerta: "N/A" }; const o = `${datos.ciudadRem.toUpperCase()}-${datos.municipioRem.toUpperCase()}`; const d = `${datos.ciudadDest.toUpperCase()}-${datos.municipioDest.toUpperCase()}`; if (rutasConfig[o] && rutasConfig[o][d]) return rutasConfig[o][d]; return { ruta: "GENÉRICA N/A N/A", casilla: "N/A", puerta: "N/A" }; }
+    function generarFactura() { const { ruta, casilla, puerta } = calcularRuta(); const guia = "700169897475"; const fecha = new Date().toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); let detallesInternacionales = datos.tipoEnvio === 'Internacional' ? `<hr><div><b>PAÍS DESTINO:</b> ${datos.paisDestino}</div><div><b>INFO ADUANAS:</b> ${datos.infoAduanas}</div><div><b>VALOR USD:</b> $${datos.valorUSD}</div>` : ''; const etiquetaHTML = `<div class="etiqueta-contenedor"><div class="etiqueta-estado">Estado: ${datos.estadoEnvio || 'Generado'}</div><div class="etiqueta-grid"><div class="grid-qr-grande" id="qrcode-grande"></div><div class="grid-header"><span class="etiqueta-titulo">Etiqueta MENSAJERÍA ${datos.tipoEnvio.toUpperCase()}</span><div class="ruta-info"><div class="ruta-item"><span>RUTA</span><span class="valor">${ruta.split(' ')[0]}</span></div><div class="ruta-item"><span></span><span class="valor">${(ruta.split(' ')[1] || '')}</span></div><div class="ruta-item"><span></span><span class="valor">${(ruta.split(' ')[2] || '')}</span></div><div class="ruta-item"><span>CASILLA</span><span class="valor">${casilla}</span></div><div class="ruta-item"><span>PUERTA</span><span class="valor">${puerta}</span></div></div></div><div class="grid-datos-envio"><div class="datos-principales"><div><b>FECHA ADMISIÓN:</b> ${fecha}</div><div><b>DE:</b> ${datos.remitente}<br>${datos.dirRem} / ${datos.ciudadRem} // ${datos.municipioRem}</div><div><b>COD.POSTAL:</b> ${datos.codPostalRem}</div><hr><div><b>PARA:</b> ${datos.destinatario}<br>${datos.dirDest} / ${datos.ciudadDest} // ${datos.municipioDest}</div><div><b>COD.POSTAL:</b> ${datos.codPostalDest}</div>${detallesInternacionales}<hr><div><b>OBS:</b> ${datos.obs || 'Ninguna'}</div><div><b>PESO:</b> ${datos.peso} kg</div><div><b>MÉTODO ENVÍO:</b> ${datos.metodoEnvio}</div></div><div class="barcode-principal"><svg id="barcode"></svg><span>Guía: ${guia}</span><div id="qrcode-pequeno" style="margin-top: 5px; display: inline-block;"></div></div></div><div class="grid-valor-cobrar"><div class="valor-a-cobrar">Valor a Cobrar: <br><span>${datos.costoTotal}</span></div></div><div class="grid-logistica"><table><thead><tr><th>ZONA</th><th>NODO</th><th>SATÉLITE</th><th>MICRO</th><th>MANZANA</th><th>FAM</th></tr></thead><tbody><tr><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table></div></div></div>`; document.getElementById("facturaDigital").innerHTML = etiquetaHTML; JsBarcode("#barcode", guia, { format: "CODE128", displayValue: false, width: 2, height: 40 }); new QRCode(document.getElementById("qrcode-grande"), { text: guia, width: 90, height: 90 }); new QRCode(document.getElementById("qrcode-pequeno"), { text: guia, width: 40, height: 40 }); }
+    updateProgress();
+</script>
+</body>
+</html>
